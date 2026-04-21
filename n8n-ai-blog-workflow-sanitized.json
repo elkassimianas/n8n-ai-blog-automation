@@ -1,0 +1,711 @@
+{
+  "name": "Blog: Keywords -> Titles",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0eb6706e-07a7-4043-8022-80d652a0af7e",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Your Google Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Feuille 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "5b472cbb-0a04-4199-833d-8c88d4778a47",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "010e79d6-67b6-40f0-9ccf-3f73ad590385",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "new",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "3f7454bd-e1ea-4360-8f91-7d03a30a2667",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_OPENROUTER_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"meta-llama/llama-3.1-8b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a strict JSON generator. You must ONLY return valid JSON. No explanations, no text outside JSON.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Generate 3 high-quality SEO blog titles for the following keyword.\\n\\nKeyword: {{$json[\"keyword\"]}}\\n\\nRules:\\n- Each title must be engaging and natural\\n- Max 70 characters\\n- Use power words when possible\\n- Avoid repetition\\n\\nReturn ONLY valid JSON in this format:\\n{\\\"titles\\\": [\\\"Title 1\\\", \\\"Title 2\\\", \\\"Title 3\\\"]}\"\n    }\n  ],\n  \"temperature\": 0.7\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        912,
+        -32
+      ],
+      "id": "7be5693c-0423-44b5-b99d-c41cf46fb127",
+      "name": "HTTP Request",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map((item, index) => {\n  const raw = item.json.choices[0].message.content;\n  const parsed = JSON.parse(raw);\n\n  const sheetRow = $(\"Get row(s) in sheet\").itemMatching(index).json;\n\n  return [\n    {\n      json: {\n        keyword_id: sheetRow.id,\n        keyword: sheetRow.keyword,\n        title: parsed.titles[0],\n        status: \"new\",\n        wp_link: \"\",\n        notes: \"\"\n      }\n    },\n    {\n      json: {\n        keyword_id: sheetRow.id,\n        keyword: sheetRow.keyword,\n        title: parsed.titles[1],\n        status: \"new\",\n        wp_link: \"\",\n        notes: \"\"\n      }\n    },\n    {\n      json: {\n        keyword_id: sheetRow.id,\n        keyword: sheetRow.keyword,\n        title: parsed.titles[2],\n        status: \"new\",\n        wp_link: \"\",\n        notes: \"\"\n      }\n    }\n  ];\n}).flat();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        -96
+      ],
+      "id": "f858b8c6-052f-4b80-8fce-e632f45e0804",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Your Google Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Feuille 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "keyword": "={{ $json.keyword }}",
+            "status": "generated",
+            "notes": "={{ $json.notes }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "keyword",
+              "displayName": "keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        672,
+        -32
+      ],
+      "id": "c9da11dc-804d-42d1-95dc-1fd2ac6be7e0",
+      "name": "Append or update row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "98c0741c-c9e6-41c6-b62c-18ba94ab35ba",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "new",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1504,
+        -96
+      ],
+      "id": "c3af1d31-b714-40ad-91d1-b08731ce54c0",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_OPENROUTER_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"meta-llama/llama-3.1-8b-instruct\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a strict JSON generator. You must ONLY return valid JSON. No explanations, no text outside JSON.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"You are a professional blog writer and SEO writer.\\n\\nWrite a blog article based on this title and keyword.\\n\\nTitle: {{$json[\"title\"]}}\\nKeyword: {{$json[\"keyword\"]}}\\n\\nThe structure must follow this style:\\n- a catchy numbered title\\n- a short intro that explains the problem and promises useful ideas\\n- exactly 8 short idea sections\\n- each idea section must have a clear heading and a short practical paragraph\\n- some idea sections can include short bullet points\\n- a short conclusion at the end\\n- include exactly 3 image prompts that fit naturally with the article\\n- do not include markdown fences\\n- return ONLY valid JSON\\n- if the JSON format is not respected, the system will fail\\n\\nReturn exactly in this structure:\\n\\n{\\n  \\\"final_title\\\": \\\"Final title here\\\",\\n  \\\"excerpt\\\": \\\"Short summary here\\\",\\n  \\\"intro\\\": \\\"Intro paragraph here\\\",\\n  \\\"ideas\\\": [\\n    {\\n      \\\"heading\\\": \\\"Idea heading 1\\\",\\n      \\\"content\\\": \\\"Short practical paragraph here\\\",\\n      \\\"bullets\\\": [\\\"Point 1\\\", \\\"Point 2\\\"]\\n    },\\n    {\\n      \\\"heading\\\": \\\"Idea heading 2\\\",\\n      \\\"content\\\": \\\"Short practical paragraph here\\\",\\n      \\\"bullets\\\": []\\n    },\\n    {\\n      \\\"heading\\\": \\\"Idea heading 3\\\",\\n      \\\"content\\\": \\\"Short practical paragraph here\\\",\\n      \\\"bullets\\\": [\\\"Point 1\\\", \\\"Point 2\\\"]\\n    },\\n    {\\n      \\\"heading\\\": \\\"Idea heading 4\\\",\\n      \\\"content\\\": \\\"Short practical paragraph here\\\",\\n      \\\"bullets\\\": []\\n    },\\n    {\\n      \\\"heading\\\": \\\"Idea heading 5\\\",\\n      \\\"content\\\": \\\"Short practical paragraph here\\\",\\n      \\\"bullets\\\": [\\\"Point 1\\\", \\\"Point 2\\\"]\\n    },\\n    {\\n      \\\"heading\\\": \\\"Idea heading 6\\\",\\n      \\\"content\\\": \\\"Short practical paragraph here\\\",\\n      \\\"bullets\\\": []\\n    },\\n    {\\n      \\\"heading\\\": \\\"Idea heading 7\\\",\\n      \\\"content\\\": \\\"Short practical paragraph here\\\",\\n      \\\"bullets\\\": [\\\"Point 1\\\", \\\"Point 2\\\"]\\n    },\\n    {\\n      \\\"heading\\\": \\\"Idea heading 8\\\",\\n      \\\"content\\\": \\\"Short practical paragraph here\\\",\\n      \\\"bullets\\\": []\\n    }\\n  ],\\n  \\\"conclusion\\\": \\\"Short conclusion here\\\",\\n  \\\"image_prompts\\\": [\\n    \\\"Image prompt 1\\\",\\n    \\\"Image prompt 2\\\",\\n    \\\"Image prompt 3\\\"\\n  ]\\n}\"\n    }\n  ],\n  \"temperature\": 0.5\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        288,
+        240
+      ],
+      "id": "694e1e2a-2e48-4a16-94e1-9336f5b8c3af",
+      "name": "HTTP Request1",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map((item, index) => {\n  const raw = item.json.choices[0].message.content;\n  const parsed = JSON.parse(raw);\n\n  const prevRow = $(\"Update row in sheet\").itemMatching(index).json;\n\n  return {\n    json: {\n      row_number: prevRow.row_number,\n      keyword_id: prevRow.keyword_id,\n      keyword: prevRow.keyword,\n      original_title: prevRow.title,\n      sheet_status: prevRow.status,\n      wp_link: prevRow.wp_link || \"\",\n      notes: prevRow.notes || \"\",\n\n      final_title: parsed.final_title || prevRow.title,\n      excerpt: parsed.excerpt || \"\",\n      intro: parsed.intro || \"\",\n      ideas: Array.isArray(parsed.ideas) ? parsed.ideas : [],\n      conclusion: parsed.conclusion || \"\",\n      image_prompts: Array.isArray(parsed.image_prompts) ? parsed.image_prompts : [],\n      article_status: \"article_generated\"\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        496,
+        240
+      ],
+      "id": "91d6419c-3133-4918-9af5-f979438b9c6a",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Your Google Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1813090899,
+          "mode": "list",
+          "cachedResultName": "Feuille 2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=1813090899"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "keyword_id": "={{ $json.keyword_id }}",
+            "keyword": "={{ $json.keyword }}",
+            "title": "={{ $json.title }}",
+            "status": "={{ $json.status }}",
+            "wp_link": "={{ $json.wp_link }}",
+            "notes": "={{ $json.notes }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "keyword_id",
+              "displayName": "keyword_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "keyword",
+              "displayName": "keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "wp_link",
+              "displayName": "wp_link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1296,
+        -96
+      ],
+      "id": "03c113fc-a50e-4ecb-bd39-4050b825a8e1",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list",
+          "cachedResultName": "Your Google Sheet",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1813090899,
+          "mode": "list",
+          "cachedResultName": "Feuille 2",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/YOUR_GOOGLE_SHEET_ID/edit#gid=1813090899"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "processing",
+            "keyword_id": "={{ $json.keyword_id }}",
+            "keyword": "={{ $json.keyword }}",
+            "title": "={{ $json.title }}",
+            "wp_link": "={{ $json.wp_link }}",
+            "notes": "={{ $json.notes }}"
+          },
+          "matchingColumns": [
+            "title"
+          ],
+          "schema": [
+            {
+              "id": "keyword_id",
+              "displayName": "keyword_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "keyword",
+              "displayName": "keyword",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "wp_link",
+              "displayName": "wp_link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -80,
+        240
+      ],
+      "id": "ca2b13b3-79b4-47f3-b5f6-2304fcd1664c",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const title = item.json.final_title || \"\";\n  const intro = item.json.intro || \"\";\n  const ideas = Array.isArray(item.json.ideas) ? item.json.ideas : [];\n  const conclusion = item.json.conclusion || \"\";\n\n  let html = `<h1>${title}</h1>`;\n  html += `<p>${intro}</p>`;\n\n  ideas.forEach((idea, index) => {\n    html += `<h2>${idea.heading || \"\"}</h2>`;\n    html += `<p>${idea.content || \"\"}</p>`;\n\n    if (Array.isArray(idea.bullets) && idea.bullets.length > 0) {\n      html += \"<ul>\";\n      idea.bullets.forEach(bullet => {\n        html += `<li>${bullet}</li>`;\n      });\n      html += \"</ul>\";\n    }\n\n    if (index === 1) {\n      html += `<p><em>Image placeholder 1</em></p>`;\n    }\n\n    if (index === 4) {\n      html += `<p><em>Image placeholder 2</em></p>`;\n    }\n  });\n\n  html += `<p><em>Image placeholder 3</em></p>`;\n  html += `<p>${conclusion}</p>`;\n\n  return {\n    json: {\n      ...item.json,\n      final_html: html\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        224
+      ],
+      "id": "5f5d2f46-056b-411c-b409-1194d84fce61",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "title": "={{ $json.final_title }}",
+        "additionalFields": {
+          "content": "={{ $json.final_html }}",
+          "status": "draft"
+        }
+      },
+      "type": "n8n-nodes-base.wordpress",
+      "typeVersion": 1,
+      "position": [
+        912,
+        224
+      ],
+      "id": "1ba37ccb-c1f3-4269-b6b3-c270651c05f1",
+      "name": "Create a post",
+      "credentials": {
+        "wordpressApi": {
+          "id": "REDACTED_CREDENTIAL_ID",
+          "name": "WordPress account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append or update row in sheet1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Create a post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "VERSION_ID_REDACTED",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "INSTANCE_ID_REDACTED"
+  },
+  "id": "WORKFLOW_ID_REDACTED",
+  "tags": []
+}
